@@ -3,11 +3,11 @@ from functools import wraps
 import sqlite3
 import os
 import psutil
-import json  # <--- WAŻNE
+import json
 from core.database import DatabaseManager
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FILES = {"blacklist": "blacklist.txt", "monitored": "monitored_list.txt"}
+FILES = {"blacklist": "blacklist.txt", "monitored_list.txt": "monitored_list.txt"}
 CONFIG_FILE = "config.json"
 IGNORED_UI = {
     "svchost.exe", "conhost.exe", "dllhost.exe", "taskhostw.exe", "System",
@@ -16,8 +16,7 @@ IGNORED_UI = {
 }
 
 app = Flask(__name__)
-app.secret_key = 'tajny_klucz_zmien_go_produkcyjnie'
-ADMIN_CRED = ("admin", "admin")
+app.secret_key = 'zmien_to_na_trudny_losowy_klucz'
 
 db_manager = DatabaseManager()
 
@@ -32,23 +31,25 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get('logged_in'):
-            flash('Zaloguj się, aby zarządzać procesami.', 'danger')
+            flash('Musisz się zalogować, aby wykonać tę akcję.', 'danger')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
 
     return decorated
 
 
-def clean_input(text):
-    return "\n".join([line.strip() for line in (text or "").splitlines() if line.strip()])
-
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if (request.form['username'], request.form['password']) == ADMIN_CRED:
+        username = request.form['username']
+        password = request.form['password']
+
+        if db_manager.verify_user(username, password):
             session['logged_in'] = True
+            session['user'] = username
+            flash('Zalogowano pomyślnie.', 'success')
             return redirect(url_for('index'))
+
         return render_template('login.html', error='Błędny login lub hasło.')
     return render_template('login.html')
 
@@ -56,7 +57,73 @@ def login():
 @app.route('/logout')
 def logout():
     session.clear()
+    flash('Wylogowano.', 'info')
     return redirect(url_for('index'))
+
+
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    current_user = session.get('user', 'admin')
+
+    if request.method == 'POST' and 'action_security' in request.form:
+        new_user = request.form.get('new_username')
+        new_pass = request.form.get('new_password')
+        confirm_pass = request.form.get('confirm_password')
+
+        if new_pass and new_pass == confirm_pass and new_user:
+            if db_manager.update_credentials(current_user, new_user, new_pass):
+                session['user'] = new_user
+                flash(f'Zaktualizowano dane. Witaj {new_user}!', 'success')
+            else:
+                flash('Błąd: Taki użytkownik może już istnieć.', 'danger')
+        else:
+            flash('Hasła nie pasują lub pola są puste.', 'danger')
+        return redirect(url_for('settings'))
+
+    if request.method == 'POST' and 'action_config' in request.form:
+        config_data = {}
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, 'r') as f:
+                    config_data = json.load(f)
+            except:
+                pass
+
+        for key, fname in {"blacklist": "blacklist.txt", "monitored": "monitored_list.txt"}.items():
+            content = request.form.get(key)
+            if content:
+                content = "\n".join([line.strip() for line in content.splitlines() if line.strip()])
+                with open(fname, 'w', encoding='utf-8') as f: f.write(content)
+
+        new_email = request.form.get('receiver_email')
+        if new_email and 'email' in config_data:
+            config_data['email']['receiver_email'] = new_email.strip()
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(config_data, f, indent=4)
+
+        flash('Ustawienia monitoringu zapisane.', 'success')
+        return redirect(url_for('settings'))
+
+    config_data = {}
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config_data = json.load(f)
+        except:
+            pass
+
+    content = {}
+    for key, fname in FILES.items():
+        if os.path.exists(fname):
+            with open(fname, 'r', encoding='utf-8') as f: content[key] = f.read()
+
+    current_email = config_data.get('email', {}).get('receiver_email', '')
+
+    return render_template('settings.html',
+                           current_email=current_email,
+                           current_user=current_user,
+                           **content)
 
 
 @app.route('/kill_process', methods=['POST'])
@@ -72,48 +139,10 @@ def kill_process():
     return redirect(url_for('index'))
 
 
-@app.route('/settings', methods=['GET', 'POST'])
-@login_required
-def settings():
-    # Odczyt konfiguracji JSON
-    config_data = {}
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, 'r') as f:
-                config_data = json.load(f)
-        except:
-            pass
-
-    if request.method == 'POST':
-        # 1. Zapis list (blacklist/monitored)
-        for key, fname in FILES.items():
-            content = clean_input(request.form.get(key))
-            with open(fname, 'w', encoding='utf-8') as f: f.write(content)
-
-        # 2. Zapis emaila do config.json
-        new_email = request.form.get('receiver_email')
-        if new_email and 'email' in config_data:
-            config_data['email']['receiver_email'] = new_email.strip()
-            with open(CONFIG_FILE, 'w') as f:
-                json.dump(config_data, f, indent=4)
-
-        flash('Ustawienia (listy i email) zapisane.', 'success')
-        return redirect(url_for('settings'))
-
-    # Odczyt list tekstowych
-    content = {}
-    for key, fname in FILES.items():
-        if os.path.exists(fname):
-            with open(fname, 'r', encoding='utf-8') as f: content[key] = f.read()
-
-    # Przekazujemy obecny email do szablonu
-    current_email = config_data.get('email', {}).get('receiver_email', '')
-
-    return render_template('settings.html', current_email=current_email, **content)
-
-
 @app.route('/')
 def index():
+    is_admin = session.get('logged_in', False)
+
     conn = get_db()
     c = conn.cursor()
 
@@ -133,7 +162,6 @@ def index():
 
     top_blocked = c.execute(
         "SELECT process_name, COUNT(*) as count FROM blocked_processes GROUP BY process_name ORDER BY count DESC LIMIT 5").fetchall()
-
     conn.close()
 
     running_processes = []
@@ -141,12 +169,14 @@ def index():
         for p in psutil.process_iter(['pid', 'name', 'memory_info', 'cpu_percent']):
             try:
                 if p.info['name'] and p.info['name'] not in IGNORED_UI:
-                    cpu_usage = p.info['cpu_percent'] if p.info['cpu_percent'] is not None else 0
+                    cpu_count = psutil.cpu_count()
+                    raw_cpu = p.info['cpu_percent'] if p.info['cpu_percent'] is not None else 0.0
+                    cpu = round(raw_cpu / cpu_count, 1)
                     running_processes.append({
                         'pid': p.info['pid'],
                         'name': p.info['name'],
                         'mem': round(p.info['memory_info'].rss / 1048576, 1),
-                        'cpu': cpu_usage
+                        'cpu': cpu
                     })
             except:
                 pass
@@ -154,13 +184,20 @@ def index():
         pass
     running_processes.sort(key=lambda x: x['mem'], reverse=True)
 
+    # NOWE STATYSTYKI
+    process_count = len(running_processes)
+    system_memory = psutil.virtual_memory().percent
+
     return render_template('dashboard.html',
+                           is_admin=is_admin,
                            labels=[r['process_name'] for r in usage_data],
                            data=[r['total_seconds'] for r in usage_data],
                            blocked=blocked_logs,
                            blocks_today=blocks_today,
                            total_hours=total_hours,
                            live=running_processes[:50],
+                           process_count=process_count,  # NOWE
+                           system_memory=system_memory,  # NOWE
                            hourly_labels=hourly_labels,
                            hourly_data=hourly_data,
                            top_blocked_labels=[r['process_name'] for r in top_blocked],

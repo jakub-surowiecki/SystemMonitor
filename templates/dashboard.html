@@ -5,39 +5,23 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .kpi-card { border-left: 5px solid #0d6efd; }
-        .kpi-card.danger { border-left-color: #dc3545; }
-
-        /* --- POPRAWKI LAYOUTU --- */
-
-        /* Lewa kolumna (Procesy): Sztywna wysokość, żeby zawsze wypełniała kartę */
-        .process-list-container {
-            height: 600px;       /* Ustalona wysokość */
-            overflow-y: auto;    /* Pasek przewijania */
-        }
-
-        /* Prawa kolumna (Blokady): Ograniczenie wysokości, żeby nie rozciągała strony */
-        .blocked-list-container {
-            max-height: 350px;   /* Maksymalna wysokość */
-            overflow-y: auto;    /* Pasek przewijania */
-        }
-
-        /* Ładniejszy czas w logach */
-        .time-badge { font-family: monospace; font-size: 1.1em; color: #dc3545; }
+        .process-list-container { max-height: 500px; overflow-y: auto; }
+        .card { transition: transform 0.2s; }
+        .card:hover { transform: translateY(-2px); }
+        .refresh-btn { cursor: pointer; }
     </style>
 </head>
 <body class="bg-light">
 
 <nav class="navbar navbar-dark bg-dark mb-4">
     <div class="container">
-        <a class="navbar-brand" href="/">🛡️ System Monitor</a>
-        <div class="ms-auto">
-            {% if session.get('logged_in') %}
-                <span class="badge bg-danger me-3">ADMINISTRATOR</span>
-                <a href="/settings" class="btn btn-primary btn-sm me-2">⚙️ Ustawienia</a>
-                <a href="/logout" class="btn btn-outline-light btn-sm">Wyloguj</a>
+        <a class="navbar-brand" href="/">System Monitor</a>
+        <div>
+            {% if is_admin %}
+                <a href="/settings" class="btn btn-outline-light btn-sm me-2">⚙️ Ustawienia</a>
+                <a href="/logout" class="btn btn-outline-danger btn-sm">Wyloguj</a>
             {% else %}
-                <a href="/login" class="btn btn-outline-light btn-sm">🔒 Zaloguj</a>
+                <a href="/login" class="btn btn-primary btn-sm">Zaloguj się</a>
             {% endif %}
         </div>
     </div>
@@ -47,64 +31,107 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show">
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
             {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
           </div>
         {% endfor %}
       {% endif %}
     {% endwith %}
 
     <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card shadow-sm kpi-card">
+        <div class="col-xl-3 col-md-6 mb-2">
+            <div class="card border-start border-primary border-4 h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title text-muted text-uppercase small fw-bold">Całkowity Czas Pracy</h5>
-                    <h3>{{ total_hours }} <small class="text-muted fs-6">godzin</small></h3>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Czas Pracy</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_hours }} h</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card shadow-sm kpi-card danger">
+
+        <div class="col-xl-3 col-md-6 mb-2">
+            <div class="card border-start border-danger border-4 h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title text-muted text-uppercase small fw-bold">Blokady Dzisiaj</h5>
-                    <h3 class="text-danger">{{ blocks_today }} <small class="text-muted fs-6">prób</small></h3>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Blokad Dzisiaj</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ blocks_today }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-2">
+            <div class="card border-start border-success border-4 h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Procesy</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ process_count }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-2">
+            <div class="card border-start border-warning border-4 h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">RAM (System)</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ system_memory }}%</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-8">
-            <div class="card shadow-sm h-100">
-                <div class="card-header fw-bold">Aktywność w ciągu doby</div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Najdłużej działające</div>
                 <div class="card-body">
-                    <canvas id="hourlyChart" style="max-height: 250px;"></canvas>
+                    <canvas id="usageChart"></canvas>
                 </div>
             </div>
         </div>
+
         <div class="col-md-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-danger text-white fw-bold">Najczęściej Blokowane</div>
+            <div class="card h-100">
+                <div class="card-header fw-bold">Aktywność godzinowa</div>
                 <div class="card-body">
-                    <canvas id="blockedChart" style="max-height: 250px;"></canvas>
+                     <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Najczęściej blokowane</div>
+                <div class="card-body">
+                    <canvas id="blockedChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row">
-
         <div class="col-lg-7 mb-4">
             <div class="card shadow-sm h-100">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <span class="fw-bold">Aktywne Procesy</span>
+                <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+                    <span>Aktywne Procesy</span>
                     <div class="d-flex">
-                        <input type="text" id="searchInput" class="form-control form-control-sm me-2" placeholder="Szukaj..." style="width: 150px;">
-                        <a href="/" class="btn btn-sm btn-outline-primary">Odśwież 🔄</a>
+                        <input type="text" id="procSearch" class="form-control form-control-sm me-2" placeholder="Szukaj..." style="width: 150px;">
+                        <button onclick="window.location.reload()" class="btn btn-sm btn-outline-secondary">Odśwież</button>
                     </div>
                 </div>
-
                 <div class="card-body p-0 process-list-container">
                     <table class="table table-striped table-hover mb-0 align-middle" id="procTable">
                         <thead class="table-light sticky-top">
@@ -118,7 +145,7 @@
                         <tbody>
                             {% for proc in live %}
                             <tr>
-                                <td class="fw-bold text-truncate" style="max-width: 200px;">{{ proc['name'] }}</td>
+                                <td class="fw-bold text-truncate proc-name" style="max-width: 200px;">{{ proc['name'] }}</td>
                                 <td><span class="badge bg-light text-dark border">{{ proc['mem'] }} MB</span></td>
                                 <td>
                                     {% if proc['cpu'] > 10 %}
@@ -127,20 +154,16 @@
                                         <span class="text-muted">{{ proc['cpu'] }}%</span>
                                     {% endif %}
                                 </td>
-
                                 <td class="text-end">
-                                    {% if session.get('logged_in') %}
-                                        <button class="btn btn-sm btn-outline-danger"
-                                                onclick="confirmKill('{{ proc['name'] }}')">
-                                            Zabij
-                                        </button>
+                                    {% if is_admin %}
+                                        <button class="btn btn-sm btn-outline-danger" onclick="confirmKill('{{ proc['name'] }}')">Zabij</button>
                                     {% else %}
-                                        <span class="text-muted small">🔒</span>
+                                        <span class="text-muted small" title="Wymagane logowanie">🔒</span>
                                     {% endif %}
                                 </td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="3" class="text-center p-3">Brak danych.</td></tr>
+                            <tr><td colspan="4" class="text-center p-3">Brak danych.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -148,73 +171,67 @@
             </div>
         </div>
 
-        <div class="col-lg-5">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header fw-bold">Top 5 Czasochłonnych</div>
-                <div class="card-body">
-                    <canvas id="usageChart" height="200"></canvas>
+        <div class="col-lg-5 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-bold">
+                    Ostatnie Blokady
                 </div>
-            </div>
-
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white fw-bold">⛔ Ostatnie Blokady</div>
-
-                <div class="blocked-list-container">
-                    <ul class="list-group list-group-flush">
-                        {% for item in blocked %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div class="d-flex flex-column">
-                                <span class="fw-bold text-truncate" style="max-width: 180px;">{{ item['process_name'] }}</span>
-                                <small class="text-muted" style="font-size: 0.75rem;">
-                                    {{ item['reason'] if item['reason'] else 'Blacklist' }}
-                                </small>
-                            </div>
-
-                            <div class="text-end">
-                                <div class="fw-bold text-dark font-monospace">
-                                    {{ item['added_at'].split(' ')[1] }}
-                                </div>
-                                <small class="text-muted" style="font-size: 0.75rem;">
-                                    {{ item['added_at'].split(' ')[0] }}
-                                </small>
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
+                <div class="card-body p-0">
+                    <table class="table table-striped mb-0 small">
+                        <thead>
+                            <tr>
+                                <th>Proces</th>
+                                <th>Data</th>
+                                <th>Powód</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in blocked %}
+                            <tr>
+                                <td class="text-danger fw-bold">{{ log['process_name'] }}</td>
+                                <td>{{ log['added_at'] }}</td>
+                                <td>{{ log['reason'] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="mb-5 pb-5"></div>
-
-</div>
-
-<div class="modal fade" id="killModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">Potwierdzenie</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Czy na pewno chcesz siłowo zamknąć proces: <strong id="modalProcName"></strong>?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
-                <form action="/kill_process" method="POST" style="display:inline;">
-                    <input type="hidden" name="target_name" id="killInput">
-                    <button type="submit" class="btn btn-danger">Tak, zabij proces</button>
-                </form>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<form id="killForm" action="/kill_process" method="POST" style="display:none;">
+    <input type="hidden" name="target_name" id="targetInput">
+</form>
+
 <script>
-    // Wykresy
-    new Chart(document.getElementById('usageChart').getContext('2d'), {
+    // Filtr wyszukiwania procesów
+    document.getElementById('procSearch').addEventListener('keyup', function() {
+        var input = this.value.toLowerCase();
+        var rows = document.querySelectorAll('#procTable tbody tr');
+
+        rows.forEach(function(row) {
+            var nameCell = row.querySelector('.proc-name');
+            if (nameCell) {
+                var name = nameCell.textContent.toLowerCase();
+                if (name.includes(input)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        });
+    });
+
+    function confirmKill(name) {
+        if(confirm('Zakończyć proces: ' + name + '?')) {
+            document.getElementById('targetInput').value = name;
+            document.getElementById('killForm').submit();
+        }
+    }
+
+    new Chart(document.getElementById('usageChart'), {
         type: 'doughnut',
         data: {
             labels: {{ labels | tojson }},
@@ -223,7 +240,7 @@
                 backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b']
             }]
         },
-        options: { maintainAspectRatio: false }
+        options: { maintainAspectRatio: false, cutout: '70%' }
     });
 
     new Chart(document.getElementById('hourlyChart'), {
@@ -231,17 +248,12 @@
         data: {
             labels: {{ hourly_labels | tojson }},
             datasets: [{
-                label: 'Liczba uruchomień',
+                label: 'Starty',
                 data: {{ hourly_data | tojson }},
-                backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                borderRadius: 4
+                backgroundColor: '#36b9cc'
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true } }
-        }
+        options: { maintainAspectRatio: false }
     });
 
     new Chart(document.getElementById('blockedChart'), {
@@ -250,33 +262,13 @@
             labels: {{ top_blocked_labels | tojson }},
             datasets: [{
                 data: {{ top_blocked_data | tojson }},
-                backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#6c757d', '#20c997']
+                backgroundColor: ['#e74a3b', '#fd7e14', '#f6c23e', '#858796', '#5a5c69']
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom' } }
-        }
-    });
-
-    // Modal
-    function confirmKill(procName) {
-        document.getElementById('modalProcName').innerText = procName;
-        document.getElementById('killInput').value = procName;
-        new bootstrap.Modal(document.getElementById('killModal')).show();
-    }
-
-    // Wyszukiwarka Live
-    document.getElementById('searchInput').addEventListener('keyup', function() {
-        let filter = this.value.toLowerCase();
-        let rows = document.querySelectorAll('#procTable tbody tr');
-        rows.forEach(row => {
-            let text = row.cells[0].textContent.toLowerCase();
-            row.style.display = text.includes(filter) ? '' : 'none';
-        });
+        options: { maintainAspectRatio: false }
     });
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

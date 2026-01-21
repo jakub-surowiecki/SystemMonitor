@@ -8,15 +8,15 @@
 
 <nav class="navbar navbar-dark bg-dark mb-4">
     <div class="container">
-        <a class="navbar-brand" href="/">🛡️ System Monitor</a>
+        <a class="navbar-brand" href="/">System Monitor</a>
         <a href="/logout" class="btn btn-outline-danger btn-sm">Wyloguj</a>
     </div>
 </nav>
 
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>⚙️ Zarządzanie Listami</h2>
-        <a href="/" class="btn btn-outline-secondary">← Wróć do Dashboardu</a>
+        <h4 class="mb-0">Panel Administratora</h4>
+        <a href="/" class="btn btn-outline-secondary btn-sm">Powrót do Dashboardu</a>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -30,44 +30,70 @@
       {% endif %}
     {% endwith %}
 
-    <form method="POST">
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card shadow-sm border-warning border-start border-4">
+                <div class="card-body">
+                    <h5 class="card-title text-warning fw-bold mb-3">Konto Administratora</h5>
+                    <form method="POST">
+                        <input type="hidden" name="action_security" value="1">
 
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card shadow-sm border-success">
-                    <div class="card-header bg-success text-white fw-bold">📧 Konfiguracja Powiadomień</div>
-                    <div class="card-body">
-                        <label class="form-label fw-bold">Docelowy adres e-mail:</label>
-                        <input type="email" name="receiver_email" class="form-control" value="{{ current_email }}" placeholder="np. twoj.mail@gmail.com">
-                        <div class="form-text">Na ten adres będą wysyłane alerty o blokadach i uruchomieniach.</div>
-                    </div>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted text-uppercase">Nazwa użytkownika</label>
+                                <input type="text" name="new_username" class="form-control" value="{{ current_user }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted text-uppercase">Nowe hasło</label>
+                                <input type="password" name="new_password" class="form-control" placeholder="Minimum 5 znaków" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted text-uppercase">Powtórz hasło</label>
+                                <input type="password" name="confirm_password" class="form-control" placeholder="Powtórz hasło" required>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-warning w-100 fw-bold">Zaktualizuj konto</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST">
+        <input type="hidden" name="action_config" value="1">
+
+        <div class="card shadow-sm border-success border-start border-4 mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-success fw-bold mb-3">Powiadomienia Email</h5>
+                <label class="form-label small text-muted text-uppercase">Adres docelowy</label>
+                <input type="email" name="receiver_email" class="form-control" value="{{ current_email }}" placeholder="np. twoj.mail@gmail.com">
+                <div class="form-text">Na ten adres będą wysyłane alerty o blokadach i uruchomieniach.</div>
+                <br>
+                <div class="form-text">Dane konfiguracyjne (SMTP) znajdują się w pliku config.json.</div>
             </div>
         </div>
 
         <div class="row">
-            <div class="col-md-6">
-                <div class="card shadow-sm mb-4 h-100 border-danger">
-                    <div class="card-header bg-danger text-white fw-bold">⛔ Blacklista (Blokowanie)</div>
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm border-danger border-top-4 h-100">
+                    <div class="card-header bg-white fw-bold text-danger border-bottom-0 pt-3">
+                        Czarna Lista (Blokowanie)
+                    </div>
                     <div class="card-body">
-                        <p class="text-muted small">
-                            Procesy wpisane tutaj będą <strong>natychmiast zamykane</strong>.<br>
-                            Fakt blokady zostanie odnotowany na Dashboardzie.
-                        </p>
-                        <textarea name="blacklist" class="form-control font-monospace" rows="12">{{ blacklist }}</textarea>
+                        <textarea name="blacklist" class="form-control font-monospace bg-light" rows="12" style="font-size: 0.9rem;">{{ blacklist }}</textarea>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-6">
-                <div class="card shadow-sm mb-4 h-100 border-primary">
-                    <div class="card-header bg-primary text-white fw-bold">👁️ Lista Monitorowana (Alert Email)</div>
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm border-primary border-top-4 h-100">
+                    <div class="card-header bg-white fw-bold text-primary border-bottom-0 pt-3">
+                        Lista Monitorowana
+                    </div>
                     <div class="card-body">
-                        <p class="text-muted small">
-                            Procesy wpisane tutaj generują <strong>powiadomienia e-mail</strong>.<br>
-                            <span class="text-danger fw-bold">Ważne:</span> Jeśli chcesz otrzymać e-mail o zablokowaniu procesu z Blacklisty, musisz go dodać również tutaj!
-                        </p>
-                        <textarea name="monitored" class="form-control font-monospace" rows="12">{{ monitored }}</textarea>
+                        <textarea name="monitored" class="form-control font-monospace bg-light" rows="12" style="font-size: 0.9rem;">{{ monitored }}</textarea>
                     </div>
                 </div>
             </div>
@@ -75,7 +101,7 @@
 
         <div class="fixed-bottom bg-white border-top p-3 shadow-lg text-end">
             <div class="container">
-                <button type="submit" class="btn btn-success btn-lg px-5">Zapisz zmiany</button>
+                <button type="submit" class="btn btn-success btn-lg px-5 fw-bold">Zapisz konfigurację</button>
             </div>
         </div>
     </form>
