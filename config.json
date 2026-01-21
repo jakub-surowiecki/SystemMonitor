@@ -1,0 +1,17 @@
+{
+    "database": {
+        "file_name": "system_monitor.db"
+    },
+    "email": {
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 587,
+        "sender_email": "",
+        "sender_password": "",
+        "receiver_email": ""
+    },
+    "files": {
+        "blacklist": "blacklist.txt",
+        "monitored": "monitored_list.txt",
+        "log_file": "system_monitor.log"
+    }
+}

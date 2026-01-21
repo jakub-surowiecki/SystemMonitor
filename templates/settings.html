@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ustawienia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="/">🛡️ System Monitor</a>
+        <a href="/logout" class="btn btn-outline-danger btn-sm">Wyloguj</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>⚙️ Zarządzanie Listami</h2>
+        <a href="/" class="btn btn-outline-secondary">← Wróć do Dashboardu</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-success">
+                    <div class="card-header bg-success text-white fw-bold">📧 Konfiguracja Powiadomień</div>
+                    <div class="card-body">
+                        <label class="form-label fw-bold">Docelowy adres e-mail:</label>
+                        <input type="email" name="receiver_email" class="form-control" value="{{ current_email }}" placeholder="np. twoj.mail@gmail.com">
+                        <div class="form-text">Na ten adres będą wysyłane alerty o blokadach i uruchomieniach.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-4 h-100 border-danger">
+                    <div class="card-header bg-danger text-white fw-bold">⛔ Blacklista (Blokowanie)</div>
+                    <div class="card-body">
+                        <p class="text-muted small">
+                            Procesy wpisane tutaj będą <strong>natychmiast zamykane</strong>.<br>
+                            Fakt blokady zostanie odnotowany na Dashboardzie.
+                        </p>
+                        <textarea name="blacklist" class="form-control font-monospace" rows="12">{{ blacklist }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-4 h-100 border-primary">
+                    <div class="card-header bg-primary text-white fw-bold">👁️ Lista Monitorowana (Alert Email)</div>
+                    <div class="card-body">
+                        <p class="text-muted small">
+                            Procesy wpisane tutaj generują <strong>powiadomienia e-mail</strong>.<br>
+                            <span class="text-danger fw-bold">Ważne:</span> Jeśli chcesz otrzymać e-mail o zablokowaniu procesu z Blacklisty, musisz go dodać również tutaj!
+                        </p>
+                        <textarea name="monitored" class="form-control font-monospace" rows="12">{{ monitored }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="fixed-bottom bg-white border-top p-3 shadow-lg text-end">
+            <div class="container">
+                <button type="submit" class="btn btn-success btn-lg px-5">Zapisz zmiany</button>
+            </div>
+        </div>
+    </form>
+</div>
+<br><br><br>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

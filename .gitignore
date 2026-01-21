@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# PyInstaller / Kompilacja
+build/
+dist/
+*.spec
+
+# Dane i Logi
+system_monitor.db
+system_monitor.log
+blacklist.txt
+monitored_list.txt
+
+# Środowisko IDE
+.idea/
+.vscode/
