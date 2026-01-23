@@ -7,7 +7,7 @@ import json
 from core.database import DatabaseManager
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FILES = {"blacklist": "blacklist.txt", "monitored_list.txt": "monitored_list.txt"}
+FILES = {"blacklist": "blacklist.txt", "monitored_list": "monitored_list.txt"}
 CONFIG_FILE = "config.json"
 IGNORED_UI = {
     "svchost.exe", "conhost.exe", "dllhost.exe", "taskhostw.exe", "System",
@@ -16,7 +16,7 @@ IGNORED_UI = {
 }
 
 app = Flask(__name__)
-app.secret_key = 'zmien_to_na_trudny_losowy_klucz'
+app.secret_key = 'BhAl0*t&7p8w15BMA@*r'
 
 db_manager = DatabaseManager()
 
@@ -135,7 +135,7 @@ def kill_process():
         conn.execute("INSERT INTO pending_commands (command, target) VALUES ('KILL', ?)", (target,))
         conn.commit()
         conn.close()
-        flash(f'⚠️ Wysłano rozkaz zakończenia: {target}', 'warning')
+        flash(f'Wysłano rozkaz zakończenia: {target}', 'warning')
     return redirect(url_for('index'))
 
 
@@ -184,7 +184,6 @@ def index():
         pass
     running_processes.sort(key=lambda x: x['mem'], reverse=True)
 
-    # NOWE STATYSTYKI
     process_count = len(running_processes)
     system_memory = psutil.virtual_memory().percent
 

@@ -5,7 +5,7 @@ import servicemanager
 import sys
 import os
 from waitress import serve
-from dashboard import app  # Importujemy Twoją aplikację Flask
+from dashboard import app
 from core.logger import logger
 
 
@@ -22,11 +22,8 @@ class MonitorDashboardSvc(win32serviceutil.ServiceFramework):
         self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
         logger.info("Usługa Dashboard: Zatrzymywanie...")
         win32event.SetEvent(self.hWaitStop)
-        # Waitress nie ma eleganckiego 'stop' w wątku głównym,
-        # więc zabicie procesu przez SCM jest standardem.
 
     def SvcDoRun(self):
-        # Fix ścieżek dla EXE
         if getattr(sys, 'frozen', False):
             base_path = os.path.dirname(sys.executable)
         else:
@@ -38,7 +35,6 @@ class MonitorDashboardSvc(win32serviceutil.ServiceFramework):
                               (self._svc_name_, ''))
 
         try:
-            # Uruchamiamy profesjonalny serwer na porcie 5000
             serve(app, host='0.0.0.0', port=5000, threads=4)
         except Exception as e:
             logger.critical(f"Błąd krytyczny usługi Dashboard: {e}")

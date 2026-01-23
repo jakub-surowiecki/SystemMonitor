@@ -42,7 +42,6 @@ def on_start(name):
             if blacklist.kill_process(name):
                 db.log_block(name)
                 if monitored.contains(name):
-                    # ZMIANA: Konkretna metoda alertu
                     alerts.send_block_alert(name)
             return
 
@@ -50,7 +49,6 @@ def on_start(name):
         if name not in ALWAYS_LOG and name in tracker.active: return
 
         if monitored.contains(name):
-            # ZMIANA: Konkretna metoda alertu
             alerts.send_start_alert(name)
 
         tracker.start(name)
@@ -64,9 +62,7 @@ def on_stop(name):
         res = tracker.stop(name)
         if res:
             db.save_usage(*res)
-            # p_name, start, end, duration = res
             if monitored.contains(name):
-                # ZMIANA: Konkretna metoda alertu (przekazujemy start i duration)
                 alerts.send_stop_alert(name, res[1], res[3])
     except Exception as e:
         logger.error(f"Err Stop {name}: {e}")

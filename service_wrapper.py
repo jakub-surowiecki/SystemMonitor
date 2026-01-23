@@ -5,7 +5,7 @@ import servicemanager
 import sys
 import os
 import threading
-import main  # Importujemy Twój plik main.py
+import main
 from core.logger import logger
 
 
@@ -22,11 +22,10 @@ class MonitorBackendSvc(win32serviceutil.ServiceFramework):
     def SvcStop(self):
         self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
         logger.info("Usługa Backend: Otrzymano sygnał STOP.")
-        self.stop_event.set()  # Sygnał dla pętli w main.py
+        self.stop_event.set()
         win32event.SetEvent(self.hWaitStop)
 
     def SvcDoRun(self):
-        # Fix ścieżek dla EXE
         if getattr(sys, 'frozen', False):
             base_path = os.path.dirname(sys.executable)
         else:
@@ -37,7 +36,6 @@ class MonitorBackendSvc(win32serviceutil.ServiceFramework):
                               servicemanager.PYS_SERVICE_STARTED,
                               (self._svc_name_, ''))
 
-        # Uruchomienie logiki z main.py
         try:
             main.run(self.stop_event)
         except Exception as e:
